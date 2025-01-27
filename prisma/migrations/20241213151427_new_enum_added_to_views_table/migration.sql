@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "view_context" ADD VALUE 'REFERRALS_LINK_WEB_PAGE';

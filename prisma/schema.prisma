@@ -1,0 +1,816 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id                        String                @id @default(uuid()) @db.VarChar(50)
+  email                     String?               @unique
+  first_name                String                @db.VarChar(100)
+  last_name                 String                @db.VarChar(100)
+  username                  String                @unique @db.VarChar(100)
+  phone_number              String                @db.VarChar(100)
+  google_id                 String?               @db.VarChar(255)
+  facebook_id               String?               @db.VarChar(255)
+  profile_picture           String?               @db.VarChar(255)
+  birthdate                 DateTime
+  gender                    gender                @default(Male)
+  is_active                 Boolean               @default(true)
+  is_deleted                Boolean               @default(false)
+  is_confirmed              Boolean               @default(false)
+  is_phone_number_confirmed Boolean               @default(false)
+  is_affiliate              Boolean               @default(false) // Indica se o usuário é um afiliado
+  affiliate_link            String?               @unique // Link exclusivo do afiliado
+  created_at                DateTime?             @default(now())
+  updated_at                DateTime?             @updatedAt()
+  last_login                DateTime?
+  last_visit                DateTime?
+  customer                  customer?
+  user_confirmation         user_confirmation[]
+  neighborhood              neighborhood?         @relation(fields: [neighborhood_id], references: [id])
+  neighborhood_id           String?               @db.VarChar(255)
+  order                     order[]
+  merchant_customer         merchant_customer[]
+  Visit                     Visit[]
+  staff                     staff?
+  referred_by               referred[]            @relation("Affiliate") // Lista de usuários que foram referidos por este afiliado
+  referrals                 referred[]            @relation("ReferredUser") // Lista de referências feitas para este usuário
+  views_as_visited          view[]                @relation("visited_user") // Renamed to match View model
+  views_as_visitor          view[]                @relation("visitor") // Renamed to match View model
+  view_for_affiliate_link   view[]                @relation("affiliate_link") // Renamed to match View model
+  UserSession               UserSession[]
+  comment                   comment[]
+  like                      like[]
+  Subscription              Subscription[]
+  NotificationSettings      NotificationSettings?
+  Notification              Notification[]
+}
+
+model referred {
+  id               String   @id @default(uuid()) @db.VarChar(50)
+  affiliate        user     @relation("Affiliate", fields: [affiliate_id], references: [id])
+  affiliate_id     String   @db.VarChar(50) // ID do afiliado (quem referiu)
+  referred_user    user     @relation("ReferredUser", fields: [referred_user_id], references: [id])
+  referred_user_id String   @db.VarChar(50) // ID do referido
+  created_at       DateTime @default(now())
+}
+
+model province {
+  id         String     @id @unique @default(uuid()) @db.VarChar(50)
+  name       String     @unique @db.VarChar(50)
+  region     String     @db.VarChar(50)
+  created_at DateTime?  @default(now())
+  updated_at DateTime?  @updatedAt()
+  district   district[]
+
+  @@map("province")
+}
+
+model staff {
+  id      String @id @unique @default(uuid()) @db.VarChar(50)
+  user_id String @unique
+  user    user   @relation(fields: [user_id], references: [id])
+
+  @@map("staff")
+}
+
+model district {
+  id           String         @id @unique @default(uuid()) @db.VarChar(50)
+  name         String         @unique @db.VarChar(50)
+  province     province       @relation(fields: [province_id], references: [id])
+  province_id  String         @db.VarChar(50)
+  created_at   DateTime?      @default(now())
+  updated_at   DateTime?      @updatedAt()
+  neighborhood neighborhood[]
+
+  @@map("district")
+}
+
+model neighborhood {
+  id          String    @id @unique @default(uuid()) @db.VarChar(50)
+  name        String    @unique @db.VarChar(50)
+  district    district  @relation(fields: [district_id], references: [id])
+  district_id String    @db.VarChar(50)
+  created_at  DateTime? @default(now())
+  updated_at  DateTime? @updatedAt()
+  users       user[]
+
+  @@map("neighborhood")
+}
+
+model user_confirmation {
+  id         String   @id @default(uuid()) @db.VarChar(50)
+  code       Int
+  action     String?
+  user_id    String
+  hash       String?  @db.Text
+  user       user     @relation(fields: [user_id], references: [id])
+  expires_at DateTime
+  metadata   Json?
+  is_sms     Boolean  @default(false)
+  is_used    Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt()
+
+  @@map("user_confirmation")
+}
+
+model customer {
+  id                    String              @id @default(uuid()) @db.VarChar(50)
+  user_id               String              @unique
+  user                  user                @relation(fields: [user_id], references: [id])
+  city                  String              @db.VarChar(100)
+  neighborhood_id       String              @db.VarChar(100)
+  gender                String              @db.VarChar(100)
+  facebook_url          String?             @db.VarChar(100)
+  instagram_url         String?             @db.VarChar(100)
+  linkedin_url          String?             @db.VarChar(100)
+  youtube_url           String?             @db.VarChar(100)
+  tiktok_url            String?             @db.VarChar(100)
+  whatsapp_phone_number String?             @db.VarChar(100)
+  bio                   String?             @db.Text
+  birth_date            DateTime            @db.Date
+  type                  String              @db.VarChar(100)
+  is_active             Boolean             @default(true)
+  is_deleted            Boolean             @default(false)
+  created_at            DateTime            @default(now())
+  updated_at            DateTime            @updatedAt()
+  cell_phone            cell_phone[]
+  business              business[]
+  product               product[]
+  customer_document     customer_document?
+  kyc_verification      kyc_verification?
+  service               service[]
+  merchant_customer     merchant_customer[]
+
+  @@map("customer")
+}
+
+model cell_phone {
+  id                   String        @id @default(uuid()) @db.VarChar(50)
+  name                 String        @db.VarChar(100)
+  phone_number         String        @db.VarChar(100)
+  customer_id          String?
+  customer             customer?     @relation(fields: [customer_id], references: [id])
+  business_id          String?
+  code_id              String?
+  business             business?     @relation(fields: [business_id], references: [id])
+  country_code         country_code? @relation(fields: [code_id], references: [id])
+  is_main              Boolean       @default(false)
+  mobile_operator_name String        @db.VarChar(100)
+  is_deleted           Boolean       @default(false)
+  created_at           DateTime      @default(now())
+  updated_at           DateTime      @updatedAt()
+
+  @@map("cell_phone")
+}
+
+model country_code {
+  id         String       @id @default(uuid()) @db.VarChar(50)
+  country    String       @db.VarChar(100)
+  code       String       @db.VarChar(100)
+  cell_phone cell_phone[]
+
+  @@map("country_code")
+}
+
+model category {
+  id                String              @id @default(uuid()) @db.VarChar(50)
+  name              String              @unique
+  slug              String              @unique
+  description       String?             @db.VarChar(255)
+  type              String?             @db.VarChar(60)
+  image_url         String?
+  parent_id         String?             @db.VarChar(50) // Chave estrangeira para relação com a categoria pai
+  parent            category?           @relation("CategoryParent", fields: [parent_id], references: [id])
+  subcategories     category[]          @relation("CategoryParent")
+  created_at        DateTime?           @default(now())
+  updated_at        DateTime?           @updatedAt()
+  business_category business_category[]
+  product           product[]
+  service           service[]
+
+  @@map("category")
+}
+
+model business_category {
+  id          String    @id @default(uuid()) @db.VarChar(50)
+  business_id String
+  category_id String
+  business    business  @relation(fields: [business_id], references: [id])
+  category    category  @relation(fields: [category_id], references: [id])
+  created_at  DateTime? @default(now())
+  updated_at  DateTime? @updatedAt()
+
+  @@map("business_category")
+}
+
+model business {
+  id                    String                  @id @default(uuid()) @db.VarChar(50)
+  customer_id           String
+  customer              customer                @relation(fields: [customer_id], references: [id])
+  name                  String?                 @db.VarChar(100)
+  bio                   String?
+  image_url             String?                 @db.VarChar()
+  cover                 String?                 @db.VarChar()
+  cell_phone            cell_phone[]
+  category_business     business_category[]
+  is_active             Boolean?                @default(false)
+  is_deleted            Boolean?                @default(false)
+  created_at            DateTime?               @default(now())
+  updated_at            DateTime?               @default(now())
+  location              Json?
+  business_social_media business_social_media[]
+  operating_hours       Json?
+  order                 order[]
+
+  @@map("business")
+}
+
+model address {
+  id                 String    @id @default(uuid()) @db.VarChar(50)
+  city               String    @db.VarChar(100)
+  street_name        String    @db.VarChar(100)
+  street_number      String    @db.VarChar(100)
+  address_complement String?   @db.VarChar(100)
+  country            String    @db.VarChar(100)
+  postal_code        String    @db.VarChar(100)
+  created_at         DateTime? @default(now())
+  updated_at         DateTime? @updatedAt()
+
+  @@map("address")
+}
+
+model business_social_media {
+  id          String       @id @default(uuid()) @db.VarChar(50)
+  business_id String
+  business    business     @relation(fields: [business_id], references: [id])
+  social_id   String
+  social      social_media @relation(fields: [social_id], references: [id])
+
+  @@map("business_social_media")
+}
+
+model social_media {
+  id                    String                  @id @default(uuid()) @db.VarChar(50)
+  name                  String                  @db.VarChar(100)
+  description           String                  @db.VarChar(100)
+  logo                  String                  @db.VarChar(100)
+  created_at            DateTime?               @default(now())
+  updated_at            DateTime?               @updatedAt()
+  business_social_media business_social_media[]
+
+  @@map("social_media")
+}
+
+model lead {
+  id         String  @id @default(uuid()) @db.VarChar(50)
+  email      String? @unique
+  first_name String?
+  last_name  String?
+  whats_app  String
+
+  @@map("lead")
+}
+
+model product {
+  id                   String                 @id @default(uuid()) @db.VarChar(50)
+  name                 String
+  description          String?                @db.Text
+  price                Decimal                @db.Money
+  purchase_price       Decimal?               @db.Money // pode ser que queira-se registar o preco da embalagem, caixa e etc 
+  cover_image_url      String?
+  stock_quantity       Int
+  property_type_id     String?
+  available_to_order   Boolean                @default(false)
+  category_id          String
+  customer_id          String?
+  is_deleted           Boolean?               @default(false)
+  is_active            Boolean?               @default(true)
+  slug                 String                 @unique
+  customer             customer?              @relation(fields: [customer_id], references: [id])
+  created_at           DateTime?              @default(now())
+  updated_at           DateTime?              @updatedAt()
+  product_segmentation product_segmentation[]
+  category             category               @relation(fields: [category_id], references: [id])
+  property_type        property_type?         @relation(fields: [property_type_id], references: [id])
+  product_image        product_image[]
+  item                 item[]
+  Visit                Visit[]
+  View                 view[]
+  comment              comment[]
+  like                 like[]
+  Notification         Notification[]
+
+  @@map("product")
+}
+
+model Visit {
+  id         String    @id @default(uuid()) @db.VarChar(50)
+  name       String    @db.VarChar(100)
+  product_id String
+  product    product   @relation(fields: [product_id], references: [id])
+  user_id    String
+  user       user      @relation(fields: [user_id], references: [id])
+  created_at DateTime? @default(now())
+  updated_at DateTime? @updatedAt()
+
+  @@map("visit")
+}
+
+model view {
+  id              String       @id @default(uuid()) @db.VarChar(50)
+  context         view_context
+  product_id      String?
+  product         product?     @relation(fields: [product_id], references: [id])
+  affiliate_link  String?
+  affiliate       user?        @relation(name: "affiliate_link", fields: [affiliate_link], references: [affiliate_link])
+  visited_user_id String?
+  user            user?        @relation(name: "visited_user", fields: [visited_user_id], references: [id])
+  visitor_user_id String?
+  visitor         user?        @relation(name: "visitor", fields: [visitor_user_id], references: [id])
+  visitor_hash_id String       @db.VarChar(100)
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt()
+
+  @@map("view")
+}
+
+model property_type {
+  id         String    @id @default(uuid()) @db.VarChar(50)
+  name       String    @unique
+  slug       String    @unique
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt()
+  product    product[]
+
+  @@map("property_type")
+}
+
+model product_image {
+  id         String  @id @default(uuid()) @db.VarChar(50)
+  is_deleted Boolean @default(false)
+
+  image_url  String
+  product_id String
+  product    product @relation(fields: [product_id], references: [id])
+
+  @@map("product_image")
+}
+
+model service_image {
+  id         String  @id @default(uuid()) @db.VarChar(50)
+  image_url  String
+  service_id String
+  service    service @relation(fields: [service_id], references: [id])
+
+  @@map("service_image")
+}
+
+model service {
+  id              String          @id @default(uuid()) @db.VarChar(50)
+  name            String
+  cover_image_url String?
+  description     String?         @db.Text
+  category        category        @relation(fields: [category_id], references: [id])
+  customer        customer?       @relation(fields: [customer_id], references: [id])
+  customer_id     String?
+  category_id     String
+  created_at      DateTime?       @default(now())
+  updated_at      DateTime?       @updatedAt()
+  service_image   service_image[]
+  is_deleted      Boolean         @default(false)
+  is_active       Boolean         @default(true)
+  item            item[]
+  comment         comment[]
+  like            like[]
+
+  @@map("service")
+}
+
+model segmentation {
+  id                   String                 @id @default(uuid()) @db.VarChar(50)
+  type                 String // Type of segmentation (gender, ageRange, etc.)
+  value                String // Value of the segmentation
+  created_at           DateTime?              @default(now())
+  updated_at           DateTime?              @updatedAt()
+  product_segmentation product_segmentation[]
+
+  @@map("segmentation")
+}
+
+model product_segmentation {
+  id         String  @id @default(uuid()) @db.VarChar(50)
+  product_id String
+  is_deleted Boolean @default(false)
+
+  segmentation    segmentation @relation(fields: [segmentation_id], references: [id])
+  segmentation_id String
+  product         product      @relation(fields: [product_id], references: [id])
+
+  @@map("product_segmentation")
+}
+
+model customer_document {
+  id               String        @id @default(uuid()) @db.VarChar(50)
+  customer_id      String        @unique
+  front_image      String        @db.VarChar(255)
+  back_image       String        @db.VarChar(255)
+  selfie_with_doc  String        @db.VarChar(255)
+  full_name        String        @db.VarChar(100)
+  birthplace       String        @db.VarChar(100)
+  address          String        @db.VarChar(100)
+  document_number  String        @db.VarChar(100)
+  document_type_id String
+  issue_date       DateTime
+  expires_at       DateTime
+  created_at       DateTime?     @default(now())
+  updated_at       DateTime?     @updatedAt()
+  customer         customer      @relation(fields: [customer_id], references: [id])
+  type             document_type @relation(fields: [document_type_id], references: [id])
+
+  @@map("customer_document")
+}
+
+model document_type {
+  id                String              @id @default(uuid()) @db.VarChar(50)
+  name              String              @db.VarChar(100)
+  created_at        DateTime?           @default(now())
+  updated_at        DateTime?           @updatedAt()
+  customer_document customer_document[]
+
+  @@map("document_type")
+}
+
+model risk_level {
+  id               String             @id @default(uuid()) @db.VarChar(50)
+  name             String             @db.VarChar(100)
+  created_at       DateTime?          @default(now())
+  updated_at       DateTime?          @updatedAt()
+  kyc_verification kyc_verification[]
+
+  @@map("risk_level")
+}
+
+model verification_status {
+  id               String             @id @default(uuid()) @db.VarChar(50)
+  name             String             @db.VarChar(100)
+  created_at       DateTime?          @default(now())
+  updated_at       DateTime?          @updatedAt()
+  kyc_verification kyc_verification[]
+
+  @@map("verification_status")
+}
+
+model kyc_verification {
+  id                     String              @id @default(uuid()) @db.VarChar(50)
+  customer_id            String              @unique
+  verification_status_id String
+  risk_level_id          String
+  verification_date      DateTime?
+  notes                  String?             @db.VarChar(255)
+  created_at             DateTime?           @default(now())
+  updated_at             DateTime?           @updatedAt()
+  verification_status    verification_status @relation(fields: [verification_status_id], references: [id])
+  risk_level             risk_level          @relation(fields: [risk_level_id], references: [id])
+  customer               customer            @relation(fields: [customer_id], references: [id])
+
+  @@map("kyc_verification")
+}
+
+model order {
+  id             String          @id @default(uuid()) @db.VarChar(50)
+  user_id        String?
+  status         order_status    @default(PENDING)
+  origin         origin_order    @default(CUSTOMER)
+  total_price    Decimal         @db.Money
+  paid_amount    Decimal         @db.Money
+  total          Decimal         @db.Money
+  sub_total      Decimal         @db.Money
+  customer_id    String?
+  notes          String?
+  reference      String          @unique
+  delivery_fee   Decimal?        @db.Money
+  bussiness_id   String?
+  user           user?           @relation(fields: [user_id], references: [id])
+  bussiness      business?       @relation(fields: [bussiness_id], references: [id])
+  item           item[]
+  created_at     DateTime?       @default(now())
+  updated_at     DateTime?       @updatedAt()
+  order_discount order_discount?
+
+  @@map("order")
+}
+
+model order_discount {
+  id         String        @id @default(uuid()) @db.VarChar(50)
+  order_id   String        @unique
+  type       discount_type
+  reason     String?
+  amount     Float?
+  created_at DateTime?     @default(now())
+  updated_at DateTime?     @updatedAt()
+
+  order order @relation(fields: [order_id], references: [id])
+
+  @@map("order_discount")
+}
+
+model item {
+  id                  String               @id @default(uuid()) @db.VarChar(50)
+  order_id            String?
+  product_id          String?
+  service_id          String?
+  qty                 Int
+  unit_price          Decimal              @db.Money
+  unit_purchase_price Decimal              @db.Money
+  order               order?               @relation(fields: [order_id], references: [id])
+  product             product?             @relation(fields: [product_id], references: [id])
+  service             service?             @relation(fields: [service_id], references: [id])
+  order_item_discount order_item_discount?
+
+  @@map("item")
+}
+
+model order_item_discount {
+  id            String        @id @default(uuid()) @db.VarChar(50)
+  order_item_id String        @unique
+  type          discount_type
+  amount        Float?
+  reason        String?
+  created_at    DateTime?     @default(now())
+  updated_at    DateTime?     @updatedAt()
+
+  item item @relation(fields: [order_item_id], references: [id])
+
+  @@map("order_item_discount")
+}
+
+model UserSession {
+  id        String   @id @default(uuid()) // ID único da sessão
+  userId    String   @map("user_id") @db.VarChar(50)
+  user      user     @relation(fields: [userId], references: [id])
+  deviceId  String   @map("device_id") @db.VarChar(50) // Identificador único do dispositivo
+  token     String // Token criptografado
+  createdAt DateTime @default(now()) // Data de criação
+  expiresAt DateTime // Data de expiração
+  ipAddress String? // Opcional: Endereço IP do login
+  userAgent String? // Opcional: Informações sobre o dispositivo/navegador
+  browser   String?  @db.VarChar(50)
+  os        String?  @db.VarChar(50)
+  device    String?  @db.VarChar(100)
+
+  @@map("user_session")
+}
+
+model comment {
+  id             String         @id @default(uuid()) @db.VarChar(50)
+  content        String         @db.Text
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt()
+  user_id        String
+  product_id     String? // Nulo se o comentário é para um serviço
+  service_id     String? // Nulo se o comentário é para um produto
+  parent_comment String? // Referência ao comentário pai, nulo para comentários principais
+  user           user           @relation(fields: [user_id], references: [id])
+  product        product?       @relation(fields: [product_id], references: [id])
+  service        service?       @relation(fields: [service_id], references: [id])
+  parent         comment?       @relation("CommentParent", fields: [parent_comment], references: [id])
+  replies        comment[]      @relation("CommentParent")
+  likes          like[]
+  notifications  Notification[]
+
+  @@unique([user_id, product_id, service_id, parent_comment]) // Garante unicidade entre usuário, produto/serviço e subcomentário
+}
+
+model like {
+  id           String         @id @default(uuid()) @db.VarChar(50)
+  created_at   DateTime       @default(now())
+  user_id      String
+  comment_id   String? // Nulo se o "gosto" é para um serviço
+  product_id   String? // Nulo se o "gosto" é para um serviço
+  service_id   String? // Nulo se o "gosto" é para um produto
+  is_like      Boolean // True para like, False para dislike
+  user         user           @relation(fields: [user_id], references: [id])
+  product      product?       @relation(fields: [product_id], references: [id])
+  service      service?       @relation(fields: [service_id], references: [id])
+  comment      comment?       @relation(fields: [comment_id], references: [id])
+  updated_at   DateTime?      @updatedAt()
+  Notification Notification[]
+
+  @@unique([user_id, product_id, service_id]) // Garante unicidade para evitar múltiplos "gostos" do mesmo usuário no mesmo alvo
+}
+
+model merchant_customer {
+  id          String    @id @default(uuid()) @db.VarChar(50)
+  merchant_id String
+  user_id     String
+  merchant    customer  @relation(fields: [merchant_id], references: [id])
+  user        user      @relation(fields: [user_id], references: [id])
+  created_at  DateTime? @default(now())
+  updated_at  DateTime? @updatedAt()
+
+  @@map("merchant_customer")
+}
+
+model SubscriptionPlan {
+  id               String         @id @default(uuid()) @db.VarChar(50)
+  name             String         @db.VarChar(100) // Nome do plano (ex.: Básico, Premium)
+  description      String? // Descrição do plano
+  base_price       Float // Preço base para a menor periodicidade (ex.: mensal)
+  billing_cycle    String         @default("monthly") // Ciclo padrão exibido (ex.: monthly, yearly)
+  period_discounts Json? // Descontos específicos por periodicidade
+  trial_duration   Int? // Duração do período de teste (em dias ou meses)
+  created_at       DateTime?      @default(now())
+  updated_at       DateTime?      @updatedAt()
+  Subscription     Subscription[]
+
+  @@map("subscription_plan")
+}
+
+model Subscription {
+  id         String           @id @default(uuid()) @db.VarChar(50)
+  user_id    String           @db.VarChar(50)
+  user       user             @relation(fields: [user_id], references: [id])
+  plan_id    String           @db.VarChar(50)
+  plan       SubscriptionPlan @relation(fields: [plan_id], references: [id])
+  period     String // Periodicidade escolhida (ex.: monthly, quarterly, yearly)
+  price      Float // Preço final pago pelo usuário (após descontos)
+  start_date DateTime         @default(now()) // Data de início da subscrição
+  end_date   DateTime // Data de término (calcula-se a partir do plano)
+  is_trial   Boolean?         @default(false) // Indica se é um período de trial
+  status     String           @default("active") // Status: active, expired, cancelled
+  created_at DateTime?        @default(now())
+  updated_at DateTime?        @updatedAt()
+  payment    Payment? // Uma subscrição pode ter um único pagamento
+
+  @@map("subscription")
+}
+
+model Payment {
+  id                     String       @id @default(uuid()) @db.VarChar(50)
+  subscription_id        String       @unique // Garantir que cada pagamento se relacione a apenas uma subscrição
+  subscription           Subscription @relation(fields: [subscription_id], references: [id])
+  amount                 Float // Valor pago pelo usuário (final)
+  discount               Float // Valor do desconto aplicado
+  discount_reason        String? // Motivo do desconto (ex.: plano, afiliado)
+  payment_method         String // Método de pagamento (ex.: cartão, PayPal)
+  payment_date           DateTime     @default(now())
+  status                 String       @default("completed") // Status: pending, completed, failed
+  payment_method_details Json?
+  created_at             DateTime?    @default(now())
+  updated_at             DateTime?    @updatedAt()
+
+  @@map("payment")
+}
+
+model Notification {
+  id                           String                         @id @default(uuid()) @db.VarChar(50)
+  comment_id                   String?                        @db.VarChar(50)
+  like_id                      String?                        @db.VarChar(50)
+  product_id                   String?                        @db.VarChar(50)
+  title                        String                         @db.VarChar(255)
+  url_path                     String                         @db.VarChar(50)
+  read                         Boolean                        @default(false)
+  viewed                       Boolean                        @default(false)
+  trash                        Boolean                        @default(false)
+  read_at                      DateTime?
+  url_is_external              Boolean                        @default(false)
+  metadata                     Json? // store read metadata session_id, ip, etc
+  created_at                   DateTime                       @default(now())
+  updated_at                   DateTime                       @updatedAt()
+  comment                      comment?                       @relation(fields: [comment_id], references: [id])
+  like                         like?                          @relation(fields: [like_id], references: [id])
+  product                      product?                       @relation(fields: [product_id], references: [id])
+  notificationDispatchChannels NotificationDispatchChannels[]
+  notificationClickChannels    NotificationClickChannels[]
+  user                         user?                          @relation(fields: [userId], references: [id])
+  userId                       String?                        @db.VarChar(50)
+
+  @@map("notification")
+}
+
+model PublicNotification {
+  id                           String                         @id @default(uuid()) @db.VarChar(50)
+  title                        String                         @db.VarChar(255)
+  type                         notification_type
+  url_path                     String                         @db.VarChar(50)
+  read_by                      String[]
+  trash_by                     String[]
+  is_active                    Boolean                        @default(true)
+  viewed_by                    String[]
+  url_is_external              Boolean                        @default(false)
+  metadata                     Json? // store read metadata like device, ip, etc. Here will be a list of objects, then arrays
+  created_at                   DateTime?                      @default(now())
+  updated_at                   DateTime?                      @updatedAt()
+  NotificationDispatchChannels NotificationDispatchChannels[]
+  NotificationClickChannels    NotificationClickChannels[]
+
+  @@map("public_notification")
+}
+
+model NotificationDispatchChannels {
+  id                     String              @id @default(uuid()) @db.VarChar(50)
+  notification_id        String?             @db.VarChar(255)
+  public_notification_id String?             @db.VarChar(255)
+  email                  Boolean             @default(false)
+  sms                    Boolean             @default(false)
+  email_dispatched       Boolean?            @default(false)
+  sms_dispatched         Boolean?            @default(false)
+  push_dispatched        Boolean?            @default(false)
+  push                   Boolean             @default(false)
+  notification           Notification?       @relation(fields: [notification_id], references: [id])
+  public_notification    PublicNotification? @relation(fields: [public_notification_id], references: [id])
+
+  @@map("notification_dispatch_channels")
+}
+
+model NotificationClickChannels {
+  id                     String    @id @default(uuid()) @db.VarChar(50)
+  notification_id        String?   @db.VarChar(255)
+  public_notification_id String?   @db.VarChar(255)
+  email                  Boolean   @default(false)
+  push                   Boolean   @default(false)
+  email_click_date       DateTime  @default(now())
+  push_click_date        DateTime  @default(now())
+  updated_at             DateTime? @updatedAt()
+
+  notification        Notification?       @relation(fields: [notification_id], references: [id])
+  public_notification PublicNotification? @relation(fields: [public_notification_id], references: [id])
+
+  @@map("notification_click_channels")
+}
+
+model NotificationSettings {
+  id      String @id @default(uuid()) @db.VarChar(50)
+  user_id String @unique() @db.VarChar(50)
+
+  // Campos de preferências de e-mail
+  email_news_updates       Boolean @default(true)
+  email_tips_and_tutorials Boolean @default(true)
+  email_likes_and_comments Boolean @default(true)
+  email_reminders          Boolean @default(true)
+
+  // Campos de preferências de push
+  push_news_updates       Boolean @default(false)
+  push_tips_and_tutorials Boolean @default(false)
+  push_likes_and_comments Boolean @default(false)
+  push_reminders          Boolean @default(false)
+
+  // Campos de preferências de SMS
+  sms_news_updates       Boolean   @default(false)
+  sms_tips_and_tutorials Boolean   @default(false)
+  sms_likes_and_comments Boolean   @default(false)
+  created_at             DateTime? @default(now())
+  updated_at             DateTime? @updatedAt()
+
+  user user @relation(fields: [user_id], references: [id])
+
+  @@map("notification_settings")
+}
+
+enum order_status {
+  PENDING
+  DONE
+  CANCELLED
+}
+
+enum origin_order {
+  SALE
+  CUSTOMER
+}
+
+enum gender {
+  Male
+  Female
+}
+
+enum discount_type {
+  Percentage
+  Fixed
+}
+
+enum view_context {
+  PRODUCT_DETAILS_WEB_PAGE
+  REFERRALS_LINK_WEB_PAGE
+}
+
+enum notification_type {
+  LIKED_PRODUCT
+  LIKED_COMMENT
+  FAVORITED_COMMENT
+  REPLIED
+  AFFILIATE_PAID_SUBSCRIPTION
+  NEWS_AND_UPDATES
+  TIPS_AND_TUTORIALS
+}
