@@ -1,14 +1,17 @@
 {
   "compilerOptions": {
-    "target": "ES2020",              // Ou qualquer versão mais recente do ECMAScript
-    "module": "ESNext",              // Usar ESNext para importar/exportar módulos
-    "moduleResolution": "node",      // Resolução de módulos compatível com o Node.js
-    "esModuleInterop": true,         // Para garantir que você possa usar módulos CommonJS e ES
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "./dist",              // Onde o código compilado irá
-    "rootDir": "./src",              // Diretório onde seus arquivos TypeScript estão
-    "strict": true
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "resolveJsonModule": true
   },
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/types/**/*.d.ts"  // Adicione essa linha para incluir as definições de tipo
+  ],
   "exclude": ["node_modules"]
 }
